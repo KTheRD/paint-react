@@ -7,7 +7,7 @@ const App = () => {
   const [tool, setTool] = useState(Tool.stroke)
   const [history, setHistory] = useState<Blob[]>([])
   const [historyIndex, setHistoryIndex] = useState<number>(-1)
-  const [shouldRerender, setShouldRerender] = useState(false)
+  const [shouldRenderFromBlob, setShouldRenderFromBlob] = useState(false)
 
   const handleColorInput = (e: React.FormEvent<HTMLInputElement>) => {
     setColor(e.currentTarget.value)
@@ -28,13 +28,13 @@ const App = () => {
   const undo = () => {
     if (historyIndex === -1) return
     setHistoryIndex(historyIndex => historyIndex - 1)
-    setShouldRerender(true)
+    setShouldRenderFromBlob(true)
   }
 
   const redo = () => {
     if (history.length === 0 || historyIndex >= history.length - 1) return;
     setHistoryIndex(historyIndex => historyIndex + 1)
-    setShouldRerender(true)
+    setShouldRenderFromBlob(true)
   }
 
   return (
@@ -47,8 +47,8 @@ const App = () => {
         tool={tool}
         dataBlob={historyIndex !== -1 ? history[historyIndex] : null}
         onDrawing={pushToHistory}
-        onDoneRerendering={() => setShouldRerender(false)}
-        shouldRerender={shouldRerender}
+        onDoneRerendering={() => setShouldRenderFromBlob(false)}
+        shouldRenderFromBlob={shouldRenderFromBlob}
       />
       <input
         type="color"

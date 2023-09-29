@@ -12,12 +12,12 @@ interface props {
   lineWidth: number
   tool: Tool
   dataBlob: Blob | null
-  shouldRerender: boolean
+  shouldRenderFromBlob: boolean
   onDoneRerendering: () => void
   onDrawing: (newBlob: Blob) => void
 }
 
-const Paint = ({ height, width, color, lineWidth, tool, dataBlob, shouldRerender, onDoneRerendering, onDrawing }: props) => {
+const Paint = ({ height, width, color, lineWidth, tool, dataBlob, shouldRenderFromBlob, onDoneRerendering, onDrawing }: props) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
 
   const contextRef = useRef<CanvasRenderingContext2D | null>(null)
@@ -39,7 +39,7 @@ const Paint = ({ height, width, color, lineWidth, tool, dataBlob, shouldRerender
   }, [lineWidth])
 
   useEffect(() => {
-    if (!shouldRerender) return
+    if (!shouldRenderFromBlob) return
     if (!dataBlob) {
       clearCanvas()
       onDoneRerendering()
@@ -48,13 +48,11 @@ const Paint = ({ height, width, color, lineWidth, tool, dataBlob, shouldRerender
     createImageBitmap(dataBlob!)
       .then(
         image => {
-          return contextRef.current!.drawImage(image, 0, 0)
+          contextRef.current!.drawImage(image, 0, 0)
+          onDoneRerendering()
         }
       )
-      .then(
-        onDoneRerendering
-      )
-  }, [shouldRerender])
+  }, [shouldRenderFromBlob])
 
   const [isDrawing, setIsDrawing] = useState(false)
 
