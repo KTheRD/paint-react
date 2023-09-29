@@ -6,28 +6,55 @@ export enum Tool {
 }
 
 interface props {
-  height: number,
-  width: number,
-  color: string,
+  height: number
+  width: number
+  color: string
   lineWidth: number
   tool: Tool
+  dataBlob: Blob | null
+  shouldRerender: boolean
+  onDoneRerendering: () => void
+  onDrawing: (newBlob: Blob) => void
 }
 
-const Paint = ({ height, width, color, lineWidth, tool }: props) => {
+const Paint = ({ height, width, color, lineWidth, tool, dataBlob, shouldRerender, onDoneRerendering, onDrawing }: props) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
 
   const contextRef = useRef<CanvasRenderingContext2D | null>(null)
+
+  const clearCanvas = () => {
+    contextRef.current!.fillStyle = "white"
+    contextRef.current!.fillRect(0, 0, height, width)
+  }
 
   useEffect(() => {
     contextRef.current = canvasRef.current!.getContext("2d")
     contextRef.current!.lineCap = "round"
     contextRef.current!.lineJoin = "round"
-
+    clearCanvas()
   }, [])
 
   useEffect(() => {
     contextRef.current!.lineWidth = lineWidth
   }, [lineWidth])
+
+  useEffect(() => {
+    if (!shouldRerender) return
+    if (!dataBlob) {
+      clearCanvas()
+      onDoneRerendering()
+      return;
+    }
+    createImageBitmap(dataBlob!)
+      .then(
+        image => {
+          return contextRef.current!.drawImage(image, 0, 0)
+        }
+      )
+      .then(
+        onDoneRerendering
+      )
+  }, [shouldRerender])
 
   const [isDrawing, setIsDrawing] = useState(false)
 
@@ -44,6 +71,7 @@ const Paint = ({ height, width, color, lineWidth, tool }: props) => {
   const endDrawing = () => {
     contextRef.current!.closePath()
     setIsDrawing(false)
+    canvasRef.current!.toBlob((blob) => onDrawing(blob!))
   }
 
   const draw = (e: React.PointerEvent) => {

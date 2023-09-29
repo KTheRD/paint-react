@@ -5,6 +5,9 @@ const App = () => {
   const [color, setColor] = useState("black")
   const [lineWidth, setLineWidth] = useState(10)
   const [tool, setTool] = useState(Tool.stroke)
+  const [history, setHistory] = useState<Blob[]>([])
+  const [historyIndex, setHistoryIndex] = useState<number>(-1)
+  const [shouldRerender, setShouldRerender] = useState(false)
 
   const handleColorInput = (e: React.FormEvent<HTMLInputElement>) => {
     setColor(e.currentTarget.value)
@@ -16,6 +19,24 @@ const App = () => {
     setTool(e.currentTarget.value as Tool)
   }
 
+  const pushToHistory = (blob: Blob) => {
+    setHistory(history => history.slice(0, historyIndex + 1).concat([blob]))
+    setHistoryIndex((historyIndex) => historyIndex + 1)
+    return history.push(blob)
+  }
+
+  const undo = () => {
+    if (historyIndex === -1) return
+    setHistoryIndex(historyIndex => historyIndex - 1)
+    setShouldRerender(true)
+  }
+
+  const redo = () => {
+    if (history.length === 0 || historyIndex >= history.length - 1) return;
+    setHistoryIndex(historyIndex => historyIndex + 1)
+    setShouldRerender(true)
+  }
+
   return (
     <>
       <Paint
@@ -24,6 +45,10 @@ const App = () => {
         lineWidth={lineWidth}
         color={color}
         tool={tool}
+        dataBlob={historyIndex !== -1 ? history[historyIndex] : null}
+        onDrawing={pushToHistory}
+        onDoneRerendering={() => setShouldRerender(false)}
+        shouldRerender={shouldRerender}
       />
       <input
         type="color"
@@ -44,6 +69,8 @@ const App = () => {
         <option value={Tool.stroke}>Stroke</option>
         <option value={Tool.eraser}>Eraser</option>
       </select>
+      <button onClick={undo}>Undo</button>
+      <button onClick={redo}>Redo</button>
     </>
   )
 }
