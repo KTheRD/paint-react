@@ -1,5 +1,5 @@
-import React, { useState } from "react"
-import Paint, { Shape, Tool } from "./Paint"
+import React, { useRef, useState } from "react"
+import Paint, { PaintHandle, Shape, Tool } from "./Paint"
 
 const App = () => {
   const [color, setColor] = useState("black")
@@ -8,7 +8,8 @@ const App = () => {
   const [shape, setShape] = useState<Shape>()
   const [history, setHistory] = useState<Blob[]>([])
   const [historyIndex, setHistoryIndex] = useState<number>(-1)
-  const [shouldRenderFromBlob, setShouldRenderFromBlob] = useState(false)
+
+  const paintRef = useRef<PaintHandle>(null)
 
   const handleColorInput = (e: React.FormEvent<HTMLInputElement>) => {
     setColor(e.currentTarget.value)
@@ -34,13 +35,13 @@ const App = () => {
   const undo = () => {
     if (historyIndex === -1) return
     setHistoryIndex(historyIndex => historyIndex - 1)
-    setShouldRenderFromBlob(true)
+    paintRef.current!.drawBlob(history[historyIndex - 1])
   }
 
   const redo = () => {
     if (history.length === 0 || historyIndex >= history.length - 1) return;
     setHistoryIndex(historyIndex => historyIndex + 1)
-    setShouldRenderFromBlob(true)
+    paintRef.current!.drawBlob(history[historyIndex + 1])
   }
 
   return (
@@ -51,14 +52,11 @@ const App = () => {
         lineWidth={lineWidth}
         color={color}
         tool={tool}
-        {...(shouldRenderFromBlob && {
-          dataBlob: (historyIndex !== -1 ? history[historyIndex] : null)
-        })}
         {...(tool === Tool.shape && {
           shape: shape
         })}
         onDrawing={pushToHistory}
-        onDoneRerendering={() => setShouldRenderFromBlob(false)}
+        ref={paintRef}
       />
 
       <input
