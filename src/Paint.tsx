@@ -158,10 +158,10 @@ const Paint = forwardRef<PaintHandle, props>(
         case Shape.ellipse:
           shapeCanvasContextRef.current!.beginPath()
           shapeCanvasContextRef.current!.ellipse(
-            shapeOrigin!.x + (shapeSize!.x / 2),
-            shapeOrigin!.y + (shapeSize!.y / 2),
-            Math.abs(shapeSize!.x / 2),
-            Math.abs(shapeSize!.y / 2),
+            shapeOrigin!.x + ((e.nativeEvent.offsetX - shapeOrigin!.x) / 2),
+            shapeOrigin!.y + ((e.nativeEvent.offsetY - shapeOrigin!.y) / 2),
+            Math.abs((e.nativeEvent.offsetX - shapeOrigin!.x) / 2),
+            Math.abs((e.nativeEvent.offsetY - shapeOrigin!.y) / 2),
             0,
             0,
             2 * Math.PI
