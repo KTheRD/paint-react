@@ -2,7 +2,7 @@ import React, { useRef, useState } from "react"
 import Paint, { PaintHandle, Shape, Tool } from "./Paint"
 
 const App = () => {
-  const [color, setColor] = useState("black")
+  const [color, setColor] = useState("#000000") //flood fill expects hexadecimal
   const [lineWidth, setLineWidth] = useState(10)
   const [tool, setTool] = useState(Tool.stroke)
   const [shape, setShape] = useState<Shape>()
@@ -79,6 +79,7 @@ const App = () => {
       >
         <option value={Tool.stroke}>Stroke</option>
         <option value={Tool.eraser}>Eraser</option>
+        <option value={Tool.flood}>Flood fill</option>
         <optgroup label="Shapes">
           <option value={Shape.rect}>Rectangle</option>
           <option value={Shape.ellipse}>Ellipse</option>

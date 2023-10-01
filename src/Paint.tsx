@@ -3,7 +3,8 @@ import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState } f
 export enum Tool {
   stroke = "stroke",
   eraser = "eraser",
-  shape = "shape"
+  shape = "shape",
+  flood = "flood"
 }
 
 export enum Shape {
@@ -19,6 +20,53 @@ interface Point {
   x: number,
   y: number
 }
+
+interface Color {
+  r: number,
+  g: number,
+  b: number,
+  a: number
+}
+
+const hexToRGBA = (color: string) => ({
+  r: parseInt(color[1] + color[2], 16),
+  g: parseInt(color[3] + color[4], 16),
+  b: parseInt(color[5] + color[6], 16),
+  a: 255
+})
+
+const getColorAtPixel = (
+  data: Uint8ClampedArray,
+  width: number,
+  { x, y }: Point
+) => ({
+  r: data[4 * (width * y + x) + 0],
+  g: data[4 * (width * y + x) + 1],
+  b: data[4 * (width * y + x) + 2],
+  a: data[4 * (width * y + x) + 3]
+})
+
+const setColorAtPixel = (
+  data: Uint8ClampedArray,
+  width: number,
+  { x, y }: Point,
+  { r, g, b, a }: Color
+) => {
+  data[4 * (width * y + x) + 0] = r & 0xff
+  data[4 * (width * y + x) + 1] = g & 0xff
+  data[4 * (width * y + x) + 2] = b & 0xff
+  data[4 * (width * y + x) + 3] = a & 0xff
+}
+
+const COLOR_THRESHOLD = 0;
+const areColorsMatching = (
+  { r: r1, g: g1, b: b1, a: a1 }: Color,
+  { r: r2, g: g2, b: b2, a: a2 }: Color
+) =>
+  Math.abs(r1 - r2) <= COLOR_THRESHOLD &&
+  Math.abs(g1 - g2) <= COLOR_THRESHOLD &&
+  Math.abs(b1 - b2) <= COLOR_THRESHOLD &&
+  Math.abs(a1 - a2) <= COLOR_THRESHOLD
 
 interface props {
   height: number
@@ -43,8 +91,8 @@ const BORDERS = 3;
 
 const Paint = forwardRef<PaintHandle, props>(
   ({
-    height,
-    width,
+    height: canvasHeight,
+    width: canvasWidth,
     color,
     lineWidth,
     tool,
@@ -57,13 +105,14 @@ const Paint = forwardRef<PaintHandle, props>(
 
     const clearCanvas = () => {
       contextRef.current!.fillStyle = "white"
-      contextRef.current!.fillRect(0, 0, height, width)
+      contextRef.current!.fillRect(0, 0, canvasHeight, canvasWidth)
     }
 
     useEffect(() => {
       contextRef.current = canvasRef.current!.getContext("2d")
       contextRef.current!.lineCap = "round"
       contextRef.current!.lineJoin = "round"
+      contextRef.current!.imageSmoothingEnabled = false
       clearCanvas()
     }, [])
 
@@ -144,7 +193,7 @@ const Paint = forwardRef<PaintHandle, props>(
     }, [isDrawingShape])
 
     const drawShape = (e: React.PointerEvent) => {
-      shapeCanvasContextRef.current!.clearRect(0, 0, width, height)
+      shapeCanvasContextRef.current!.clearRect(0, 0, canvasWidth, canvasHeight)
       shapeCanvasContextRef.current!.strokeStyle = color
       switch (shape) {
         case Shape.rect:
@@ -173,6 +222,126 @@ const Paint = forwardRef<PaintHandle, props>(
         y: e.nativeEvent.offsetY - shapeOrigin!.y
       })
     }
+
+
+    const floodFill = (e: React.PointerEvent<HTMLCanvasElement>) => {
+      const imageData = contextRef.current!.getImageData(
+        0,
+        0,
+        canvasWidth,
+        canvasHeight
+      )
+      const data = imageData.data
+      const baseColor = getColorAtPixel(
+        data,
+        canvasWidth,
+        {
+          x: e.nativeEvent.offsetX,
+          y: e.nativeEvent.offsetY,
+        }
+      )
+
+      const targetColor = hexToRGBA(color)
+
+      const stack = [{
+        x: e.nativeEvent.offsetX,
+        y: e.nativeEvent.offsetY,
+      }]
+
+      while (stack.length > 0) {
+        let contigousLeft = false
+        let contigousRight = false
+
+        const currentPixel = stack.pop()!
+
+        for (;
+          currentPixel.y >= 0 &&
+          areColorsMatching(
+            baseColor,
+            getColorAtPixel(
+              data,
+              canvasWidth,
+              currentPixel
+            )
+          );
+          currentPixel.y--
+        ) { }
+
+        currentPixel.y++
+
+        for (;
+          currentPixel.y < canvasHeight &&
+          areColorsMatching(
+            getColorAtPixel(
+              data,
+              canvasWidth,
+              currentPixel
+            ),
+            baseColor
+          );
+          currentPixel.y++
+        ) {
+
+          setColorAtPixel(
+            data,
+            canvasWidth,
+            currentPixel,
+            targetColor
+          )
+
+          if (
+            currentPixel.x - 1 >= 0 &&
+            areColorsMatching(
+              baseColor,
+              getColorAtPixel(
+                data,
+                canvasWidth,
+                {
+                  ...currentPixel,
+                  x: currentPixel.x - 1,
+                }
+              )
+            )
+          ) {
+            if (!contigousLeft) {
+              contigousLeft = true
+              stack.push({
+                ...currentPixel,
+                x: currentPixel.x - 1,
+              })
+            }
+          } else contigousLeft = false
+
+
+          if (
+            currentPixel.x + 1 < canvasWidth &&
+            areColorsMatching(
+              baseColor,
+              getColorAtPixel(
+                data,
+                canvasWidth,
+                {
+                  ...currentPixel,
+                  x: currentPixel.x + 1,
+                }
+              )
+            )
+          ) {
+            if (!contigousRight) {
+              contigousRight = true
+              stack.push({
+                ...currentPixel,
+                x: currentPixel.x + 1,
+              })
+            }
+          } else contigousRight = false
+
+        }
+      }
+
+      contextRef.current!.putImageData(imageData, 0, 0)
+    }
+
 
     const endShape = () => {
       setIsDrawingShape(false)
@@ -204,8 +373,8 @@ const Paint = forwardRef<PaintHandle, props>(
 
     return <div style={{
       borderStyle: "solid",
-      width: `${width}px`,
-      height: `${height}px`,
+      width: `${canvasWidth}px`,
+      height: `${canvasHeight}px`,
       padding: 0,
       borderWidth: `${BORDERS}px`,
       position: "relative"
@@ -215,8 +384,8 @@ const Paint = forwardRef<PaintHandle, props>(
           ...CANVAS_STYLE,
           zIndex: 0
         }}
-        width={`${width}px`}
-        height={`${height}px`}
+        width={`${canvasWidth}px`}
+        height={`${canvasHeight}px`}
 
         ref={canvasRef}
 
@@ -228,10 +397,13 @@ const Paint = forwardRef<PaintHandle, props>(
               return startDrawing(e, "white")
             case Tool.shape:
               return startShape(e)
+            case Tool.flood:
+              floodFill(e)
+              return canvasRef.current!.toBlob((blob) => onDrawing(blob!))
           }
         }}
         onPointerUp={() => {
-          endDrawing()
+          if (tool === Tool.stroke || tool === Tool.eraser) endDrawing()
           canvasRef.current!.toBlob((blob) => onDrawing(blob!))
         }}
         onPointerMove={(e) => isDrawing && draw(e)}
@@ -243,8 +415,8 @@ const Paint = forwardRef<PaintHandle, props>(
             ...CANVAS_STYLE,
             zIndex: 1
           }}
-          width={`${width}px`}
-          height={`${height}px`}
+          width={`${canvasWidth}px`}
+          height={`${canvasHeight}px`}
 
           ref={shapeCanvasRef}
 
