@@ -144,8 +144,8 @@ const Paint = forwardRef<PaintHandle, props>(
       contextRef.current!.strokeStyle = color
       contextRef.current!.beginPath();
       contextRef.current!.moveTo(
-        e.nativeEvent.offsetX,
-        e.nativeEvent.offsetY
+        Math.floor(e.nativeEvent.offsetX),
+        Math.floor(e.nativeEvent.offsetY)
       )
       setIsDrawing(true)
     }
@@ -157,8 +157,8 @@ const Paint = forwardRef<PaintHandle, props>(
 
     const draw = (e: React.PointerEvent) => {
       contextRef.current!.lineTo(
-        e.nativeEvent.offsetX,
-        e.nativeEvent.offsetY
+        Math.floor(e.nativeEvent.offsetX),
+        Math.floor(e.nativeEvent.offsetY)
       )
       contextRef.current!.stroke()
     }
@@ -173,8 +173,8 @@ const Paint = forwardRef<PaintHandle, props>(
 
     const startShape = (e: React.PointerEvent) => {
       setShapeOrigin({
-        x: e.nativeEvent.offsetX,
-        y: e.nativeEvent.offsetY,
+        x: Math.floor(e.nativeEvent.offsetX),
+        y: Math.floor(e.nativeEvent.offsetY),
       })
       setShapeSize({
         x: 0,
@@ -200,17 +200,17 @@ const Paint = forwardRef<PaintHandle, props>(
           shapeCanvasContextRef.current!.strokeRect(
             shapeOrigin!.x,
             shapeOrigin!.y,
-            e.nativeEvent.offsetX - shapeOrigin!.x,
-            e.nativeEvent.offsetY - shapeOrigin!.y
+            Math.floor(e.nativeEvent.offsetX) - shapeOrigin!.x,
+            Math.floor(e.nativeEvent.offsetY) - shapeOrigin!.y
           )
           break
         case Shape.ellipse:
           shapeCanvasContextRef.current!.beginPath()
           shapeCanvasContextRef.current!.ellipse(
-            shapeOrigin!.x + ((e.nativeEvent.offsetX - shapeOrigin!.x) / 2),
-            shapeOrigin!.y + ((e.nativeEvent.offsetY - shapeOrigin!.y) / 2),
-            Math.abs((e.nativeEvent.offsetX - shapeOrigin!.x) / 2),
-            Math.abs((e.nativeEvent.offsetY - shapeOrigin!.y) / 2),
+            shapeOrigin!.x + ((Math.floor(e.nativeEvent.offsetX) - shapeOrigin!.x) / 2),
+            shapeOrigin!.y + ((Math.floor(e.nativeEvent.offsetY) - shapeOrigin!.y) / 2),
+            Math.abs((Math.floor(e.nativeEvent.offsetX) - shapeOrigin!.x) / 2),
+            Math.abs((Math.floor(e.nativeEvent.offsetY) - shapeOrigin!.y) / 2),
             0,
             0,
             2 * Math.PI
@@ -218,8 +218,8 @@ const Paint = forwardRef<PaintHandle, props>(
           shapeCanvasContextRef.current!.stroke()
       }
       setShapeSize({
-        x: e.nativeEvent.offsetX - shapeOrigin!.x,
-        y: e.nativeEvent.offsetY - shapeOrigin!.y
+        x: Math.floor(e.nativeEvent.offsetX) - shapeOrigin!.x,
+        y: Math.floor(e.nativeEvent.offsetY) - shapeOrigin!.y
       })
     }
 
@@ -236,16 +236,18 @@ const Paint = forwardRef<PaintHandle, props>(
         data,
         canvasWidth,
         {
-          x: e.nativeEvent.offsetX,
-          y: e.nativeEvent.offsetY,
+          x: Math.floor(e.nativeEvent.offsetX),
+          y: Math.floor(e.nativeEvent.offsetY),
         }
       )
 
       const targetColor = hexToRGBA(color)
 
+      if (areColorsMatching(targetColor, baseColor)) return
+
       const stack = [{
-        x: e.nativeEvent.offsetX,
-        y: e.nativeEvent.offsetY,
+        x: Math.floor(e.nativeEvent.offsetX),
+        y: Math.floor(e.nativeEvent.offsetY),
       }]
 
       while (stack.length > 0) {
@@ -338,7 +340,6 @@ const Paint = forwardRef<PaintHandle, props>(
 
         }
       }
-
       contextRef.current!.putImageData(imageData, 0, 0)
     }
 
@@ -398,8 +399,7 @@ const Paint = forwardRef<PaintHandle, props>(
             case Tool.shape:
               return startShape(e)
             case Tool.flood:
-              floodFill(e)
-              return canvasRef.current!.toBlob((blob) => onDrawing(blob!))
+              return floodFill(e)
           }
         }}
         onPointerUp={() => {
