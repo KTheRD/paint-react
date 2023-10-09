@@ -4,6 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "wasm:compile":"emcc ./src/c/canvasTools.c -o ./public/compiled/canvasTools.js -Os -sEXPORTED_FUNCTIONS=_test -sEXPORTED_RUNTIME_METHODS=ccall,cwrap -sENVIRONMENT=\"web\"",
     "dev": "vite",
     "build": "tsc && vite build",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
